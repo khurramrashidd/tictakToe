@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe ✦</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --x-color: #ff6b6b;
+    --o-color: #4ecdc4;
+    --accent: #ffd93d;
+    --win-glow: #a8ff78;
+  }
+
+  [data-theme="dark"] {
+    --bg1: #0a0a1a;
+    --bg2: #0f0f2e;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.08);
+    --border: rgba(255,255,255,0.1);
+    --text: #e8e8ff;
+    --text-muted: rgba(232,232,255,0.5);
+    --card-bg: rgba(15,15,46,0.8);
+    --grid-line: rgba(255,255,255,0.12);
+    --shadow: rgba(0,0,0,0.6);
+  }
+
+  [data-theme="light"] {
+    --bg1: #f0f0ff;
+    --bg2: #e8e8ff;
+    --surface: rgba(0,0,0,0.05);
+    --surface-hover: rgba(0,0,0,0.1);
+    --border: rgba(0,0,0,0.15);
+    --text: #1a1a3e;
+    --text-muted: rgba(26,26,62,0.5);
+    --card-bg: rgba(255,255,255,0.75);
+    --grid-line: rgba(0,0,0,0.15);
+    --shadow: rgba(100,100,200,0.3);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background: var(--bg1);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    transition: background 0.4s, color 0.4s;
+    position: relative;
+  }
+
+  /* === ANIMATED MESH BACKGROUND === */
+  .bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    animation: drift 12s ease-in-out infinite alternate;
+  }
+  .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #ff6b6b, #c23b8a); top: -15%; left: -10%; animation-duration: 14s; }
+  .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #4ecdc4, #2980b9); bottom: -10%; right: -10%; animation-duration: 11s; animation-delay: -3s; }
+  .orb3 { width: 300px; height: 300px; background: radial-gradient(circle, #ffd93d, #f39c12); top: 40%; left: 50%; animation-duration: 16s; animation-delay: -6s; }
+  .orb4 { width: 250px; height: 250px; background: radial-gradient(circle, #a8ff78, #78ffd6); top: 10%; right: 25%; animation-duration: 10s; animation-delay: -2s; }
+  .orb5 { width: 200px; height: 200px; background: radial-gradient(circle, #c471ed, #f64f59); bottom: 20%; left: 25%; animation-duration: 13s; animation-delay: -8s; }
+
+  [data-theme="light"] .orb { opacity: 0.2; }
+
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(40px, 30px) scale(1.1); }
+  }
+
+  /* Grid dots overlay */
+  .bg-dots {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* === LAYOUT === */
+  .container {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    width: 100%;
+    max-width: 520px;
+  }
+
+  /* === HEADER === */
+  header {
+    text-align: center;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.8rem, 6vw, 3rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d, #4ecdc4, #a8ff78);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s ease infinite;
+    letter-spacing: 2px;
+    text-shadow: none;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+
+  /* === THEME TOGGLE === */
+  .theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text);
+    letter-spacing: 1px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+  .theme-toggle:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--shadow); }
+  .theme-icon { font-size: 1rem; transition: transform 0.3s; }
+  .theme-toggle:hover .theme-icon { transform: rotate(20deg); }
+
+  /* === MODE SELECTOR === */
+  .mode-selector {
+    display: flex;
+    gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  .mode-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.25s;
+    color: var(--text-muted);
+    background: transparent;
+  }
+
+  .mode-btn.active {
+    background: linear-gradient(135deg, #ff6b6b, #c23b8a);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+    transform: scale(1.05);
+  }
+
+  /* === SCORE BOARD === */
+  .scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
+  }
+
+  .score-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 10px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+
+  .score-card.x-card { border-color: rgba(255,107,107,0.3); }
+  .score-card.o-card { border-color: rgba(78,205,196,0.3); }
+  .score-card.active-x { box-shadow: 0 0 20px rgba(255,107,107,0.4), 0 4px 20px var(--shadow); }
+  .score-card.active-o { box-shadow: 0 0 20px rgba(78,205,196,0.4), 0 4px 20px var(--shadow); }
+
+  .score-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .score-symbol {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin-bottom: 4px;
+  }
+
+  .score-x .score-symbol { color: var(--x-color); text-shadow: 0 0 15px rgba(255,107,107,0.6); }
+  .score-o .score-symbol { color: var(--o-color); text-shadow: 0 0 15px rgba(78,205,196,0.6); }
+
+  .score-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .draw-card {
+    text-align: center;
+  }
+  .draw-label {
+    font-size: 0.5rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-family: 'Orbitron', monospace;
+  }
+  .draw-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  /* === STATUS === */
+  .status {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-align: center;
+    min-height: 20px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+
+  .status.winner { color: var(--win-glow); text-shadow: 0 0 10px var(--win-glow); animation: pulse 0.8s ease infinite alternate; }
+  .status.draw { color: var(--accent); }
+
+  @keyframes pulse { from { opacity: 0.7; } to { opacity: 1; } }
+
+  /* === GAME BOARD === */
+  .board-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 40px var(--shadow), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    background: var(--surface);
+    border: 1px solid var(--grid-line);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 10vw, 3.5rem);
+    font-weight: 900;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .cell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .cell:hover:not(.taken) { transform: scale(1.06); background: var(--surface-hover); border-color: rgba(255,255,255,0.2); }
+  .cell:hover:not(.taken)::before { opacity: 1; }
+  .cell:active:not(.taken) { transform: scale(0.96); }
+
+  .cell.x-cell { color: var(--x-color); text-shadow: 0 0 20px rgba(255,107,107,0.7); border-color: rgba(255,107,107,0.3); background: rgba(255,107,107,0.06); }
+  .cell.o-cell { color: var(--o-color); text-shadow: 0 0 20px rgba(78,205,196,0.7); border-color: rgba(78,205,196,0.3); background: rgba(78,205,196,0.06); }
+  .cell.taken { cursor: not-allowed; }
+
+  .cell.winning {
+    animation: winPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    box-shadow: 0 0 30px var(--win-glow);
+    border-color: var(--win-glow) !important;
+    background: rgba(168,255,120,0.1) !important;
+  }
+
+  @keyframes winPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1.08); }
+  }
+
+  .cell.pop-in {
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+
+  /* === BUTTONS === */
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+  }
+
+  .btn-new {
+    background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(194,59,138,0.2));
+    color: #ff6b6b;
+    border-color: rgba(255,107,107,0.3);
+  }
+  .btn-new:hover { background: linear-gradient(135deg, #ff6b6b, #c23b8a); color: white; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,107,107,0.4); }
+
+  .btn-reset {
+    background: linear-gradient(135deg, rgba(78,205,196,0.2), rgba(41,128,185,0.2));
+    color: var(--o-color);
+    border-color: rgba(78,205,196,0.3);
+  }
+  .btn-reset:hover { background: linear-gradient(135deg, #4ecdc4, #2980b9); color: white; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(78,205,196,0.4); }
+
+  /* === STARS === */
+  .stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--dur) ease-in-out infinite alternate;
+    opacity: var(--op);
+  }
+
+  [data-theme="light"] .star { display: none; }
+
+  @keyframes twinkle { from { opacity: var(--op); } to { opacity: 0.1; } }
+
+  /* Floating particles */
+  .particles {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .particle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: float-up var(--dur) ease-in-out infinite;
+    opacity: 0;
+  }
+
+  @keyframes float-up {
+    0% { transform: translateY(100vh) scale(0); opacity: 0; }
+    20% { opacity: 0.6; }
+    80% { opacity: 0.3; }
+    100% { transform: translateY(-20px) scale(1); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-canvas">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div class="orb orb4"></div>
+  <div class="orb orb5"></div>
+</div>
+<div class="bg-dots"></div>
+<div class="stars" id="stars"></div>
+<div class="particles" id="particles"></div>
+
+<!-- Theme Toggle -->
+<button class="theme-toggle" onclick="toggleTheme()">
+  <span class="theme-icon" id="themeIcon">☀️</span>
+  <span id="themeLabel">LIGHT</span>
+</button>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <h1 class="title">TIC TAC TOE</h1>
+    <p class="subtitle">✦ Galactic Edition ✦</p>
+  </header>
+
+  <!-- Mode Selector -->
+  <div class="mode-selector">
+    <button class="mode-btn active" id="pvpBtn" onclick="setMode('pvp')">👥 PVP</button>
+    <button class="mode-btn" id="aiBtn" onclick="setMode('ai')">🤖 VS AI</button>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="scoreboard">
+    <div class="score-card x-card score-x" id="xCard">
+      <div class="score-label">Player</div>
+      <div class="score-symbol">X</div>
+      <div class="score-num" id="scoreX">{{ scores.X }}</div>
+    </div>
+    <div class="draw-card">
+      <div class="draw-label">Draw</div>
+      <div class="draw-num" id="scoreDraw">{{ scores.draw }}</div>
+    </div>
+    <div class="score-card o-card score-o" id="oCard">
+      <div class="score-label" id="oLabel">Player 2</div>
+      <div class="score-symbol">O</div>
+      <div class="score-num" id="scoreO">{{ scores.O }}</div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status" id="status">X's Turn</div>
+
+  <!-- Board -->
+  <div class="board-wrapper">
+    <div class="board" id="board">
+      {% for i in range(9) %}
+      <div class="cell" id="cell-{{ i }}" onclick="makeMove({{ i }})"></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-group">
+    <button class="btn btn-new" onclick="newGame()">⚡ NEW GAME</button>
+    <button class="btn btn-reset" onclick="resetScores()">🗑 RESET ALL</button>
+  </div>
+</div>
+
+<script>
+  let mode = 'pvp';
+  let gameActive = true;
+  let currentTurn = 'X';
+
+  // Stars
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--op:${0.3+Math.random()*0.7}`;
+    starsEl.appendChild(s);
+  }
+
+  // Particles
+  const colors = ['#ff6b6b','#4ecdc4','#ffd93d','#a8ff78','#c471ed'];
+  const particlesEl = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = `left:${Math.random()*100}%;background:${colors[i%colors.length]};--dur:${8+Math.random()*12}s;animation-delay:${Math.random()*10}s`;
+    particlesEl.appendChild(p);
+  }
+
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
+    document.getElementById('themeLabel').textContent = isDark ? 'DARK' : 'LIGHT';
+  }
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('pvpBtn').classList.toggle('active', m === 'pvp');
+    document.getElementById('aiBtn').classList.toggle('active', m === 'ai');
+    document.getElementById('oLabel').textContent = m === 'ai' ? 'AI Bot' : 'Player 2';
+    newGame();
+  }
+
+  function updateTurnIndicator(turn) {
+    currentTurn = turn;
+    const xCard = document.getElementById('xCard');
+    const oCard = document.getElementById('oCard');
+    xCard.classList.remove('active-x');
+    oCard.classList.remove('active-o');
+    if (turn === 'X') xCard.classList.add('active-x');
+    else oCard.classList.add('active-o');
+  }
+
+  async function makeMove(idx) {
+    if (!gameActive) return;
+    const cell = document.getElementById('cell-' + idx);
+    if (cell.classList.contains('taken')) return;
+
+    const res = await fetch('/move', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ index: idx, mode })
+    });
+    const data = await res.json();
+    if (data.error) return;
+
+    renderBoard(data.board, data.combo || []);
+    updateScores(data.scores);
+
+    const statusEl = document.getElementById('status');
+
+    if (data.winner) {
+      gameActive = false;
+      if (data.winner === 'draw') {
+        statusEl.textContent = "⚡ It's a Draw!";
+        statusEl.className = 'status draw';
+      } else {
+        const who = data.winner === 'O' && mode === 'ai' ? '🤖 AI' : `Player ${data.winner}`;
+        statusEl.textContent = `🏆 ${who} Wins!`;
+        statusEl.className = 'status winner';
+      }
+      updateTurnIndicator('');
+    } else {
+      const next = data.board.filter(c => c).length % 2 === 0 ? 'X' : 'O';
+      const nextLabel = next === 'O' && mode === 'ai' ? '🤖 AI' : `${next}`;
+      statusEl.textContent = `${nextLabel}'s Turn`;
+      statusEl.className = 'status';
+      updateTurnIndicator(next);
+    }
+  }
+
+  function renderBoard(board, winCombo) {
+    board.forEach((val, i) => {
+      const cell = document.getElementById('cell-' + i);
+      const prev = cell.textContent;
+      cell.textContent = val;
+      if (val) {
+        cell.classList.add('taken', val === 'X' ? 'x-cell' : 'o-cell');
+        if (!prev) cell.classList.add('pop-in');
+        setTimeout(() => cell.classList.remove('pop-in'), 400);
+      }
+      cell.classList.remove('winning');
+    });
+    if (winCombo.length) {
+      winCombo.forEach(i => {
+        setTimeout(() => document.getElementById('cell-' + i).classList.add('winning'), 100);
+      });
+    }
+  }
+
+  function updateScores(scores) {
+    document.getElementById('scoreX').textContent = scores.X || 0;
+    document.getElementById('scoreO').textContent = scores.O || 0;
+    document.getElementById('scoreDraw').textContent = scores.draw || 0;
+  }
+
+  async function newGame() {
+    const res = await fetch('/reset', { method: 'POST' });
+    const data = await res.json();
+    gameActive = true;
+    for (let i = 0; i < 9; i++) {
+      const cell = document.getElementById('cell-' + i);
+      cell.textContent = '';
+      cell.className = 'cell';
+    }
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = "X's Turn";
+    statusEl.className = 'status';
+    updateTurnIndicator('X');
+    updateScores(data.scores);
+  }
+
+  async function resetScores() {
+    const res = await fetch('/reset_scores', { method: 'POST' });
+    const data = await res.json();
+    updateScores(data.scores);
+    newGame();
+  }
+
+  updateTurnIndicator('X');
+</script>
+</body>
+</html>
